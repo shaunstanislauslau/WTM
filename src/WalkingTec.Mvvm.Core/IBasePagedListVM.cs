@@ -16,7 +16,6 @@ namespace WalkingTec.Mvvm.Core
         where T : TopBasePoco
         where S : ISearcher
     {
-        DataTable EntityDataTable { get; set; }
 
         /// <summary>
         /// 多级表头深度  默认 1级
@@ -41,6 +40,7 @@ namespace WalkingTec.Mvvm.Core
         /// <returns>Excel文件</returns>
         byte[] GenerateExcel();
 
+        string TotalText { get; set; }
         #region Old
         event Action<IBasePagedListVM<T, S>> OnAfterInitList;
         /// <summary>

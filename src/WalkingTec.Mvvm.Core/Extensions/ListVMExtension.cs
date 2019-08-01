@@ -15,7 +15,7 @@ namespace WalkingTec.Mvvm.Core.Extensions
         /// <param name="self">是否需要对数据进行Json编码</param>
         /// <param name="returnColumnObject">不在后台进行ColumnFormatInfo的转化，而是直接输出ColumnFormatInfo的json结构到前端，由前端处理，默认False</param>
         /// <returns>Json格式的数据</returns>
-        public static string GetDataJson<T>(this IBasePagedListVM<T, BaseSearcher> self, bool returnColumnObject = false) where T : TopBasePoco,new()
+        public static string GetDataJson<T>(this IBasePagedListVM<T, BaseSearcher> self, bool returnColumnObject = false) where T : TopBasePoco, new()
         {
             var sb = new StringBuilder();
             self.GetHeaders();
@@ -23,35 +23,20 @@ namespace WalkingTec.Mvvm.Core.Extensions
             {
                 self.DoSearch();
             }
-            if (self.EntityDataTable != null)
+            var el = self.GetEntityList().ToList();
+            //如果列表主键都为0，则生成自增主键，避免主键重复
+            if (el.All(x => x.ID == Guid.Empty))
             {
-                for(int i = 0; i < self.EntityDataTable.Rows.Count; i++)
-                {
-                    sb.Append(self.GetSingleRowJson(self.EntityDataTable.Rows[i], i));
-                    if (i < self.EntityDataTable.Rows.Count - 1)
-                    {
-                        sb.Append(",");
-                    }
-
-                }
+                el.ForEach(x => x.ID = Guid.NewGuid());
             }
-            else
+            //循环生成列表数据
+            for (int x = 0; x < el.Count; x++)
             {
-                var el = self.GetEntityList().ToList();
-                //如果列表主键都为0，则生成自增主键，避免主键重复
-                if (el.All(x => x.ID == Guid.Empty))
+                var sou = el[x];
+                sb.Append(self.GetSingleDataJson(sou, returnColumnObject, x));
+                if (x < el.Count - 1)
                 {
-                    el.ForEach(x => x.ID = Guid.NewGuid());
-                }
-                //循环生成列表数据
-                for (int x = 0; x < el.Count; x++)
-                {
-                    var sou = el[x];
-                    sb.Append(self.GetSingleDataJson(sou, returnColumnObject, x));
-                    if (x < el.Count - 1)
-                    {
-                        sb.Append(",");
-                    }
+                    sb.Append(",");
                 }
             }
             return $"[{sb.ToString()}]";
@@ -89,7 +74,7 @@ namespace WalkingTec.Mvvm.Core.Extensions
                     }
                     break;
                 case ColumnFormatTypeEnum.Script:
-                    rv = vm.UIService.MakeScriptButton(info.ButtonType, info.Text,  info.Script, info.ButtonID, info.Url).ToString();
+                    rv = vm.UIService.MakeScriptButton(info.ButtonType, info.Text, info.Script, info.ButtonID, info.Url).ToString();
                     break;
                 case ColumnFormatTypeEnum.Html:
                     rv = info.Html;
@@ -126,6 +111,7 @@ namespace WalkingTec.Mvvm.Core.Extensions
             sb.Append("{");
             bool containsID = false;
             bool addHiddenID = false;
+            Dictionary<string, (string, string)> colorcolumns = new Dictionary<string, (string, string)>();
             foreach (var baseCol in self.GetHeaders())
             {
                 foreach (var col in baseCol.BottomChildren)
@@ -134,7 +120,7 @@ namespace WalkingTec.Mvvm.Core.Extensions
                     {
                         continue;
                     }
-                    if (col.FieldName == "Id")
+                    if (col.FieldName?.ToLower() == "id")
                     {
                         containsID = true;
                     }
@@ -150,22 +136,25 @@ namespace WalkingTec.Mvvm.Core.Extensions
                     {
                         foreColor = RowColor;
                     }
-                    var style = string.Empty;
+                    (string bgcolor, string forecolor) colors = (null,null);
                     if (backColor != string.Empty)
                     {
-
-                        style += $"background-color:#{backColor};";
+                        colors.bgcolor = backColor;
                     }
                     if (foreColor != string.Empty)
                     {
-                        style += $"color:#{foreColor};";
+                        colors.forecolor = foreColor;
+                    }
+                    if( string.IsNullOrEmpty(colors.bgcolor) == false || string.IsNullOrEmpty(colors.forecolor) == false)
+                    {
+                        colorcolumns.Add(col.Field, colors);
                     }
                     //设定列名，如果是主键ID，则列名为id，如果不是主键列，则使用f0，f1,f2...这种方式命名，避免重复
                     var ptype = col.FieldType;
-                    if (col.Field.ToLower() == "children" && typeof(IEnumerable<T>).IsAssignableFrom(ptype))
+                    if (col.Field?.ToLower() == "children" && typeof(IEnumerable<T>).IsAssignableFrom(ptype))
                     {
                         var children = ((IEnumerable<T>)col.GetObject(obj))?.ToList();
-                        if(children == null || children.Count() == 0)
+                        if (children == null || children.Count() == 0)
                         {
                             continue;
                         }
@@ -228,7 +217,7 @@ namespace WalkingTec.Mvvm.Core.Extensions
                                 }
                             }
 
-                            //如果列是布尔值，直接返回true或false，让ExtJS生成CheckBox
+                            //如果列是布尔值，直接返回true或false，让前台生成CheckBox
                             if (ptype == typeof(bool) || ptype == typeof(bool?))
                             {
                                 if (returnColumnObject == false)
@@ -258,11 +247,6 @@ namespace WalkingTec.Mvvm.Core.Extensions
                                     html = PropertyHelper.GetEnumDisplayName(ptype, enumvalue);
                                 }
                             }
-                            if (style != string.Empty)
-                            {
-                                string uid = Guid.NewGuid().ToString().Replace("-", "");
-                                html = $"<div style='{style}' id='{uid}'>{html}<script>$('#{uid}').closest('td').css('background-color','#{backColor}');</script></div>";
-                            }
                         }
                     }
                     else
@@ -276,7 +260,7 @@ namespace WalkingTec.Mvvm.Core.Extensions
                                 break;
                             case EditTypeEnum.CheckBox:
                                 bool.TryParse(val, out bool nb);
-                                html = (self as BaseVM).UIService.MakeCheckBox(nb,null, name,"true");
+                                html = (self as BaseVM).UIService.MakeCheckBox(nb, null, name, "true");
                                 break;
                             case EditTypeEnum.ComboBox:
                                 html = (self as BaseVM).UIService.MakeCombo(name, col.ListItems, val);
@@ -299,78 +283,33 @@ namespace WalkingTec.Mvvm.Core.Extensions
                 }
             }
             sb.Append($"\"TempIsSelected\":\"{ (isSelected == true ? "1" : "0") }\"");
+            foreach (var cc in colorcolumns)
+            {
+                if(string.IsNullOrEmpty(cc.Value.Item1) == false)
+                {
+                    string bg = cc.Value.Item1;
+                    if (bg.StartsWith("#") == false)
+                    {
+                        bg = "#" + bg;
+                    }
+                    sb.Append($",\"{cc.Key}__bgcolor\":\"{bg}\"");
+                }
+                if (string.IsNullOrEmpty(cc.Value.Item2) == false)
+                {
+                    string fore = cc.Value.Item2;
+                    if (fore.StartsWith("#") == false)
+                    {
+                        fore = "#" + fore;
+                    }
+                    sb.Append($",\"{cc.Key}__forecolor\":\"{fore}\"");
+                }
+            }
             if (containsID == false)
             {
                 sb.Append($",\"ID\":\"{sou.ID}\"");
             }
             // 标识当前行数据是否被选中
             sb.Append($@",""LAY_CHECKED"":{sou.Checked.ToString().ToLower()}");
-            sb.Append(string.Empty);
-            sb.Append("}");
-            return sb.ToString();
-        }
-
-
-        public static string GetSingleRowJson<T>(this IBasePagedListVM<T, BaseSearcher> self, DataRow obj, int index = 0) where T : TopBasePoco
-        {
-            var sb = new StringBuilder();
-            //循环所有列
-            sb.Append("{");
-            bool containsID = false;
-            foreach (var baseCol in self.GetHeaders())
-            {
-                foreach (var col in baseCol.BottomChildren)
-                {
-                    if (col.ColumnType != GridColumnTypeEnum.Normal)
-                    {
-                        continue;
-                    }
-                    if (col.Title.ToLower() == "Id")
-                    {
-                        containsID = true;
-                    }
-                    sb.Append($"\"{col.Title}\":");
-                    var html = string.Empty;
-
-                    if (col.EditType == EditTypeEnum.Text || col.EditType == null)
-                    {
-
-                        var info = obj[col.Title];
-
-                        html = info.ToString();
-                        var ptype = col.FieldType;
-                        //如果列是布尔值，直接返回true或false，让ExtJS生成CheckBox
-                        if (ptype == typeof(bool) || ptype == typeof(bool?))
-                        {
-                            if (html.ToLower() == "true")
-                            {
-                                html = (self as BaseVM).UIService.MakeCheckBox(true, isReadOnly: true);
-                            }
-                            if (html.ToLower() == "false" || html == string.Empty)
-                            {
-                                html = (self as BaseVM).UIService.MakeCheckBox(false, isReadOnly: true);
-                            }
-                        }
-                        //如果列是枚举，直接使用枚举的文本作为多语言的Key查询多语言文字
-                        else if (ptype.IsEnumOrNullableEnum())
-                        {
-                            html = PropertyHelper.GetEnumDisplayName(ptype, html);
-                        }
-                    }
-
-                    html = "\"" + html.Replace(Environment.NewLine, "").Replace("\t", string.Empty).Replace("\n", string.Empty).Replace("\r", string.Empty).Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
-                    sb.Append(html);
-                    sb.Append(",");
-                }
-            }
-            sb.Append($"\"TempIsSelected\":\"{"0" }\"");
-            if (containsID == false)
-            {
-
-                sb.Append($",\"ID\":\"{Guid.NewGuid().ToString()}\"");
-            }
-            // 标识当前行数据是否被选中
-            sb.Append($@",""LAY_CHECKED"":false");
             sb.Append(string.Empty);
             sb.Append("}");
             return sb.ToString();

@@ -1,14 +1,14 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using System;
-using WalkingTec.Mvvm.Core;
-using WalkingTec.Mvvm.Mvc;
-using WalkingTec.Mvvm.Demo.ViewModels.SchoolVMs;
-using WalkingTec.Mvvm.Mvc.Binders;
+﻿using System;
+
 using Microsoft.AspNetCore.Authorization;
-using WalkingTec.Mvvm.Mvc.Auth;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+using WalkingTec.Mvvm.Core;
+using WalkingTec.Mvvm.Demo.Models;
+using WalkingTec.Mvvm.Demo.ViewModels.SchoolVMs;
+using WalkingTec.Mvvm.Mvc;
+using WalkingTec.Mvvm.Mvc.Binders;
 
 namespace WalkingTec.Mvvm.Demo.Controllers
 {
@@ -27,7 +27,38 @@ namespace WalkingTec.Mvvm.Demo.Controllers
             var vm = CreateVM<SchoolListVM>();
             return PartialView(vm);
         }
+
+        [ActionDescription("搜索")]
+        [HttpPost]
+        public ActionResult Index(SchoolListVM vm)
+        {
+            return PartialView(vm);
+        }
         #endregion
+
+
+        [ActionDescription("搜索并修改某字段")]
+        public ActionResult EditIndex()
+        {
+            var vm = CreateVM<SchoolListVM2>();
+            return PartialView(vm);
+        }
+
+        [HttpPost]
+        [ActionDescription("搜索并修改某字段")]
+        public ActionResult EditIndex(SchoolListVM2 vm)
+        {
+            //由于只更新名称字段，其他必填字段并没有值也不影响
+            ModelState.Clear();
+            foreach (var item in vm.EntityList)
+            {
+                //手动更新某个字段，由于没有使用BaseCRUDVM，如果有验证条件需要自己判断
+                DC.UpdateProperty<School>(new School { ID = item.ID, SchoolName = item.SchoolName }, x => x.SchoolName);
+            }
+            DC.SaveChanges();
+            return PartialView(vm);
+        }
+
 
         #region 新建
         [ActionDescription("新建")]

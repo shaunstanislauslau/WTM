@@ -83,7 +83,7 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
         var form = layui.form;
         form.on('select({output.Attributes["lay-filter"].Value})', function(data){{
            {FormatFuncName(item.ChangeFunc)};
-           ff.LinkedChange('{item.TriggerUrl}/'+data.value,'{Core.Utils.GetIdByName(item.LinkField.Name)}');
+           ff.LinkedChange('{item.TriggerUrl}/'+data.value,'{Core.Utils.GetIdByName(item.LinkField.ModelExplorer.Container.ModelType.Name + "."+ item.LinkField.Name)}');
         }});
 </script>
 ");
@@ -107,7 +107,7 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
                 case CheckBoxTagHelper item:
                     if (string.IsNullOrEmpty(item.ChangeFunc) == false)
                     {
-                        output.PostElement.SetHtmlContent(output.PostElement.GetContent().Replace("type=\"checkbox\" ", $"type=\"checkbox\" lay-filter=\"{output.Attributes["lay-filter"].Value}\""));
+                        output.PostContent.SetHtmlContent(output.PostContent.GetContent().Replace("type=\"checkbox\" ", $"type=\"checkbox\" lay-filter=\"{output.Attributes["lay-filter"].Value}\""));
                         output.PostElement.AppendHtml($@"
 <script>
         var form = layui.form;

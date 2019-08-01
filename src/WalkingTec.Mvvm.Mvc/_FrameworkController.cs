@@ -259,6 +259,10 @@ namespace WalkingTec.Mvvm.Mvc
                 log.ActionUrl = ex.Path;
                 log.IP = HttpContext.Connection.RemoteIpAddress.ToString();
                 log.Remark = ex.Error.ToString();
+                if (string.IsNullOrEmpty(log.Remark) == false && log.Remark.Length > 1000)
+                {
+                    log.Remark = log.Remark.Substring(0, 1000);
+                }
                 DateTime? starttime = HttpContext.Items["actionstarttime"] as DateTime?;
                 if (starttime != null)
                 {
@@ -426,6 +430,10 @@ namespace WalkingTec.Mvvm.Mvc
             if (ext == "png" || ext == "bmp" || ext == "gif" || ext == "tif" || ext == "jpg" || ext == "jpeg")
             {
                 contenttype = $"image/{ext}";
+            }
+            if (ext == "mp4")
+            {
+                contenttype = $"video/mpeg4";
             }
             if (stream == false)
             {

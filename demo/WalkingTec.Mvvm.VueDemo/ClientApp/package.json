@@ -3,17 +3,12 @@
     "version": "1.0.0",
     "description": "",
     "main": "index.js",
-    "scripts": {
-        "start": "webpack-dev-server --progress --config config/webpack.dev.js",
-        "prod": "webpack --config config/webpack.prod.js",
-        "lint": "eslint --ext .js,.vue src",
-        "lint:fix": "eslint --ext .js,.vue src --fix",
-        "test:unit": "jest --config test/jest.config.js",
-        "test": "npm run lint && npm run test:unit",
-        "test:debug": "node --inspect node_modules/.bin/jest --runInBand --config test/jest.config.js"
-    },
     "author": "",
     "license": "ISC",
+    "scripts": {
+        "start": "webpack-dev-server --progress --config config/webpack.dev.js",
+        "prod": "webpack --config config/webpack.prod.js"
+    },
     "dependencies": {
         "axios": "^0.19.0",
         "element-ui": "^2.8.2",
@@ -25,6 +20,7 @@
         "@babel/core": "^7.4.0",
         "@babel/preset-env": "^7.4.2",
         "@vue/test-utils": "^1.0.0-beta.29",
+        "aspnet-webpack": "2.0.3",
         "babel-core": "^7.0.0-bridge.0",
         "babel-eslint": "^10.0.1",
         "babel-jest": "^24.5.0",

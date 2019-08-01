@@ -17,7 +17,7 @@ import Table from './views/table';
 export default class App extends React.Component<any, any> {
   render() {
     return (
-        <div className="app-page-frameworkuserbase" key="app-page-frameworkuserbase">
+      <div className="app-page-frameworkuserbase" key="app-page-frameworkuserbase">
         <Search {...this.props} />
         <Action.pageAction {...this.props} />
         <Table {...this.props} />

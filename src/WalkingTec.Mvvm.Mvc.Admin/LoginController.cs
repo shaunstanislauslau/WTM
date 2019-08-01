@@ -70,6 +70,7 @@ namespace WalkingTec.Mvvm.Admin.Api
                 .Where(x => x.UserId == user.ID || (x.RoleId != null && roleIDs.Contains(x.RoleId.Value)))
                 .Select(x => x.MenuItem)
                 .Where(x => x.MethodName == null)
+                .OrderBy(x=>x.DisplayOrder)
                 .Select(x => new SimpleMenu
                 {
                     Id = x.ID.ToString().ToLower(),
@@ -128,7 +129,8 @@ namespace WalkingTec.Mvvm.Admin.Api
                     .Where(x => x.UserId == LoginUserInfo.Id || (x.RoleId != null && roleIDs.Contains(x.RoleId.Value)))
                     .Select(x => x.MenuItem)
                     .Where(x => x.MethodName == null)
-                    .Select(x => new SimpleMenu
+                  .OrderBy(x => x.DisplayOrder)
+                  .Select(x => new SimpleMenu
                     {
                         Id = x.ID.ToString().ToLower(),
                         ParentId = x.ParentId.ToString().ToLower(),

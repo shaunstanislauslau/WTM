@@ -67,14 +67,16 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
             output.Attributes.SetAttribute("id", Id);
             output.Attributes.SetAttribute("class", "layui-form");
             if (!(this is SearchPanelTagHelper))
+            {
                 output.Attributes.SetAttribute("style", "margin:10px");
+                //添加items以便子项可以使用
+                if (context.Items.ContainsKey("formid") == false)
+                {
+                    context.Items.Add("formid", Id);
+                }
+            }
             output.Attributes.SetAttribute("method", "post");
             output.Attributes.SetAttribute("lay-filter", Id + "form");
-            //添加items以便子项可以使用
-            if (context.Items.ContainsKey("formid") == false)
-            {
-                context.Items.Add("formid", Id);
-            }
             if (LabelWidth != null)
             {
                 context.Items.Add("formlabelwidth", LabelWidth.Value);
@@ -118,7 +120,9 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
     }})
   }}
 ");
-            if (OldPost == false)
+            //如果是普通表单并且没有设置oldpost，则使用ajax方式提交
+            //如果普通表单设置了oldpost，则用传统form提交
+            if (OldPost == false && !(this is SearchPanelTagHelper))
             {
                 output.PostElement.AppendHtml($@"
   layui.form.on('submit({Id}filter)', function(data){{
@@ -127,6 +131,18 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
     return false;
   }});
 ");
+            }
+            //如果是SearchPanel，并且指定了oldpost，则提交整个表单，而不是只刷新grid数据
+            if( OldPost == true && this is SearchPanelTagHelper search)
+            {
+                output.PostElement.AppendHtml($@"
+$('#{search.SearchBtnId}').on('click', function () {{
+    if({BeforeSubmit ?? "true"} == false){{return false;}}
+    ff.PostForm('{output.Attributes["action"].Value}', '{Id}', '{baseVM?.ViewDivId}')
+    return false;
+  }});
+");
+
             }
             //输出后台返回的错误信息
             if (baseVM?.MSD?.Count > 0)
@@ -148,12 +164,12 @@ $(""#{Id}submiterrorholder"").before(""<div class='layui-input-block' style='tex
                     }
                     if (haserror == true)
                     {
-                        output.PostElement.AppendHtml($@"$(""#{Utils.GetIdByName(key)}"").addClass('layui-form-danger');");
+                        output.PostElement.AppendHtml($@"$(""#{Utils.GetIdByName(baseVM.GetType().Name+"."+key)}"").addClass('layui-form-danger');");
                     }
                 }
                 if (firstkey != null)
                 {
-                    output.PostElement.AppendHtml($@"$(""#{Utils.GetIdByName(firstkey)}"").focus();");
+                    output.PostElement.AppendHtml($@"$(""#{Utils.GetIdByName(baseVM.GetType().Name + "."+firstkey)}"").focus();");
                 }
             }
             output.PostElement.AppendHtml($@"</script>");

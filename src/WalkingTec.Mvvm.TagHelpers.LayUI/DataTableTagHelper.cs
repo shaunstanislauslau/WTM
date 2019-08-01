@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Razor.TagHelpers;
 using Newtonsoft.Json;
@@ -29,7 +30,7 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
         /// <summary>
         /// 用于生成操作列
         /// </summary>
-        public const string TABLE_TOOLBAR_PREFIX = "wtToolBar_"; 
+        public const string TABLE_TOOLBAR_PREFIX = "wtToolBar_";
         #endregion
 
         private static JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings()
@@ -245,6 +246,10 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
         public Type VMType { get; set; }
 
         /// <summary>
+        /// 是否显示汇总行
+        /// </summary>
+        public bool NeedShowTotal { get; set; }
+        /// <summary>
         /// 排除的搜索条件
         /// </summary>
         private static readonly string[] _excludeParams = new string[]
@@ -290,9 +295,19 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
                     Fixed = item.Fixed,
                     Align = item.Align,
                     UnResize = item.UnResize,
-                    Hide = item.Hide
+                    Hide = item.Hide,
+                    ShowTotal = item.ShowTotal
                     //EditType = item.EditType
                 };
+                if ((item.EditType == EditTypeEnum.Text || item.EditType == null) && string.IsNullOrEmpty(item.Field) == false)
+                {
+                    tempCol.Templet = new Newtonsoft.Json.Linq.JRaw(getTemplate(item.Field));
+                }
+
+                if (item.ShowTotal == true)
+                {
+                    NeedShowTotal = true;
+                }
                 if (item.Children != null && item.Children.Count() > 0)
                 {
                     tempCol.Colspan = item.ChildrenLength;
@@ -402,7 +417,8 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
                 {
                     Type = LayuiColumnTypeEnum.Checkbox,
                     LAY_CHECKED = CheckedAll,
-                    Rowspan = maxDepth
+                    Rowspan = maxDepth,
+                    Width = 45
                 };
                 tempCols.Add(checkboxHeader);
             }
@@ -412,7 +428,8 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
                 var gridIndex = new LayuiColumn()
                 {
                     Type = LayuiColumnTypeEnum.Numbers,
-                    Rowspan = maxDepth
+                    Rowspan = maxDepth,
+                    Width = 45
                 };
                 tempCols.Add(gridIndex);
             }
@@ -429,9 +446,20 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
                     Align = item.Align,
                     UnResize = item.UnResize,
                     Hide = item.Hide,
+                    ShowTotal = item.ShowTotal
                     //Style = "height:auto !important;white-space:normal !important"
                     //EditType = item.EditType
                 };
+                //非编辑状态且有字段名的情况下，设置template
+                if((item.EditType == EditTypeEnum.Text || item.EditType == null) && string.IsNullOrEmpty(item.Field) == false)
+                {
+                    tempCol.Templet = new Newtonsoft.Json.Linq.JRaw(getTemplate(item.Field));
+                }
+
+                if (item.ShowTotal == true)
+                {
+                    NeedShowTotal = true;
+                }
                 switch (item.ColumnType)
                 {
                     case GridColumnTypeEnum.Space:
@@ -458,6 +486,11 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
             if (nextCols.Count > 0)
             {
                 CalcChildCol(layuiCols, nextCols, maxDepth, 1);
+            }
+
+            if (layuiCols.Count > 0 && layuiCols[0].Count > 0)
+            {
+                layuiCols[0][0].TotalRowText = ListVM?.TotalText;
             }
 
             #endregion
@@ -504,10 +537,10 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
     elem: '#{Id}'
     ,id: '{Id}'
     ,autoSort: false
+    ,totalRow: {NeedShowTotal.ToString().ToLower()}
     {(string.IsNullOrEmpty(Url) ? string.Empty : $",url: '{Url}'")}
     {(Filter == null || Filter.Count == 0 ? string.Empty : $",where: {JsonConvert.SerializeObject(Filter)}")}
     {(Method == null ? ",method:'post'" : $",method: '{Method.Value.ToString().ToLower()}'")}
-    {(UseLocalData ? $",data: {ListVM.GetDataJson()}" : string.Empty)}
     {(!Loading.HasValue ? string.Empty : $",loading: {Loading.Value.ToString().ToLower()}")}
     ,request: {JsonConvert.SerializeObject(request)}
     ,response: {JsonConvert.SerializeObject(response)}
@@ -533,6 +566,9 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
 
   {TableJSVar} = table.render({Id}option);
   
+ {(UseLocalData ? $@"ff.LoadLocalData(""{Id}"",{Id}option,{ListVM.GetDataJson().Replace("<script>", "$$script$$").Replace("</script>", "$$#script$$")}); " : string.Empty)}  
+
+
   // 监听工具条
   function wtToolBarFunc_{Id}(obj){{ //注：tool是工具条事件名，test是table原始容器的属性 lay-filter=""对应的值""
     var data = obj.data, layEvent = obj.event, tr = obj.tr; //获得当前行 tr 的DOM对象
@@ -604,16 +640,16 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
                     if (item.ParameterType != GridActionParameterTypesEnum.RemoveRow)
                     {
                         bool condition = false;
-                        if(string.IsNullOrEmpty(item.BindVisiableColName) == false)
+                        if (string.IsNullOrEmpty(item.BindVisiableColName) == false)
                         {
                             condition = true;
                         }
-                        if(condition == true)
+                        if (condition == true)
                         {
-                            rowBtnStrBuilder.Append("{{#  if(d."+item.BindVisiableColName+" == true || d."+item.BindVisiableColName+" == 'true' ){ }}");
+                            rowBtnStrBuilder.Append("{{#  if(d." + item.BindVisiableColName + " == true || d." + item.BindVisiableColName + " == 'true' ){ }}");
                         }
                         rowBtnStrBuilder.Append($@"<a class=""layui-btn layui-btn-primary layui-btn-xs"" lay-event=""{item.Area + item.ControllerName + item.ActionName + item.QueryString}"">{item.Name}</a>");
-                        if(condition == true)
+                        if (condition == true)
                         {
                             rowBtnStrBuilder.Append("{{#  } else{ }}");
                             //rowBtnStrBuilder.Append($@"<a class=""layui-btn layui-btn-primary layui-btn-xs"" style=""visibility:collapse"">{item.Name}</a>");
@@ -657,7 +693,7 @@ namespace WalkingTec.Mvvm.TagHelpers.LayUI
                             break;
                     }
                     //如果是按钮组容器，加载子按钮
-                    if (item.ActionName.Equals("ActionsGroup")
+                    if (item.ActionName?.Equals("ActionsGroup") == true
                         && item.SubActions != null &&
                         item.SubActions.Count > 0
                     )
@@ -786,7 +822,8 @@ isPost = true;
 case '{item.Area + item.ControllerName + item.ActionName + item.QueryString}':{{");
                 if (item.ParameterType == GridActionParameterTypesEnum.AddRow)
                 {
-                    gridBtnEventStrBuilder.Append($@"ff.AddGridRow(""{Id}"",{Id}option,{ListVM.GetSingleDataJson(null,false)});
+                    Regex r = new Regex("<script>.*?</script>");
+                    gridBtnEventStrBuilder.Append($@"ff.AddGridRow(""{Id}"",{Id}option,{r.Replace(ListVM.GetSingleDataJson(null, false), "")});
 ");
                 }
                 else if (item.ParameterType == GridActionParameterTypesEnum.RemoveRow) { }
@@ -808,6 +845,15 @@ var isPost = false;
                 gridBtnEventStrBuilder.Append($@"}};break;
 ");
             }
+        }
+
+        private string getTemplate(string field)
+        {
+
+            return $@"function(d){{
+                var sty = '';var bg = '';var did = '{field}_'+d.LAY_INDEX;if(d.{field}__bgcolor != undefined) bg = ""<script>$('#""+did+""').closest('td').css('background-color','""+d.{field}__bgcolor+""');</s""+""cript>""; if(d.{field}__forecolor != undefined) sty = 'color:'+d.{field}__forecolor+';'; return '<div style=""'+sty+'"" id=""'+did+'"">'+d.{field}.replace(/\""/g,""'"")+bg+'</div>';
+            }}
+            ";
         }
     }
 }

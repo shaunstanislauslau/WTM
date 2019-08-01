@@ -134,7 +134,7 @@ window.ff = {
                                 $('#DONOTUSE_MAINTAB .layui-tab-content > div:not(.layui-show)').css('overflow', 'auto').removeClass("donotuse_fill donotuse_pdiv");
                                 $('#DONOTUSE_MAINTAB .layui-tab-content > .layui-show').css('overflow', 'auto').addClass('donotuse_fill donotuse_pdiv');
                                 ff.triggerResize();
-                                if (xdata.elem.context.attributes !== undefined && xdata.elem.context.attributes !== null) {
+                                if (xdata.elem.context !== undefined && xdata.elem.context.attributes !== undefined && xdata.elem.context.attributes !== null) {
                                     var surl = xdata.elem.context.attributes['lay-id'].value;
                                     if (surl !== undefined && surl !== null && surl !== '') {
                                         DONOTUSE_IGNOREHASH = true;
@@ -158,9 +158,14 @@ window.ff = {
                 }
                 layer.close(index);
             },
-            error: function () {
+            error: function (a,b,c) {
                 layer.close(index);
-                layer.alert('加载失败');
+                if (a.responseText !== undefined && a.responseText !== "") {
+                    layer.alert(a.responseText);
+                }
+                else {
+                    layer.alert('加载失败');
+                }
             },
             complete: function () {
                 if (window.location.hash !== "#" + furl) {
@@ -217,6 +222,9 @@ window.ff = {
     PostForm: function (url, formid, divid) {
         var layer = layui.layer;
         var index = layer.load(2);
+        if (url === undefined || url === "") {
+            url = $("#" + formid).attr("action");
+        }
         $.ajax({
             cache: false,
             type: "POST",
@@ -571,12 +579,13 @@ window.ff = {
         var loaddata = layui.table.cache[gridid];
         for (val in data) {
             if (val === "ID") {
-                data[val] = ff.guid();
+                data[val] = ff.guid()+"<script>alert('test');</script>";
             }
         }
         for (val in data) {
             if (typeof (data[val]) == 'string') {
-                data[val] = data[val].replace(/\[.*?\]/ig, "[" + loaddata.length + "]");
+                data[val] = data[val].replace(/\[\d?\]/ig, "[" + loaddata.length + "]");
+                data[val] = data[val].replace(/_\d?_/ig, "_" + loaddata.length + "_");
                 var re = /(<input .*?)\s*\/>/ig;
                 var re2 = /(<select .*?)\s*>(.*?<\/select>)/ig;
                 var re3 = /(.*?)<input hidden name=\"(.*?)\.id\" .*?\/>(.*?)/ig;
@@ -592,13 +601,29 @@ window.ff = {
         layui.table.render(option);
     },
 
+    LoadLocalData: function (gridid, option, datas) {
+        for (var i = 0; i < datas.length; i++) {
+            var data = datas[i];
+            for (val in data) {
+                if (typeof (data[val]) == 'string') {
+                    data[val] = data[val].replace(/[$]{2}script[$]{2}/img, "<script>").replace(/[$]{2}#script[$]{2}/img, "</script>");
+                }
+            }
+        }
+        option.url = null;
+        option.data = datas;
+        option.limit = 9999;
+        layui.table.render(option);
+    },
+
     RemoveGridRow: function (gridid, option, index) {
         var loaddata = layui.table.cache[gridid];
         loaddata.splice(index - 1, 1);
         for (var i = 0; i < loaddata.length; i++) {
             for (val in loaddata[i]) {
                 if (typeof (loaddata[i][val]) == 'string') {
-                    loaddata[i][val] = loaddata[i][val].replace(/\[.*?\]/ig, "[" + i + "]");
+                    loaddata[i][val] = loaddata[i][val].replace(/\[\d?\]/ig, "[" + i + "]");
+                    loaddata[i][val] = loaddata[i][val].replace(/_\d?_/ig, "_" + i + "_");
                     loaddata[i][val] = loaddata[i][val].replace("/onchange=\".*?\"/", "onchange=\"ff.gridcellchange(this,'" + gridid + "'," + i + ",'" + val + "')\"");
                 }
             }

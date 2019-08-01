@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
@@ -193,7 +194,7 @@ namespace WalkingTec.Mvvm.Core.Extensions
             }
 
             //如果没有指定忽略权限，则拼接权限过滤的where条件
-            if (ignorDataPrivilege == false)
+            if (ignorDataPrivilege == false || dps != null)
             {
                 query = AppendSelfDPWhere(query, dps);
             }
@@ -793,6 +794,14 @@ where S : struct
             {
                 return "";
             }
+        }
+    }
+
+    public static class DbCommandExtension
+    {
+        public static void AddParameter(this DbCommand command)
+        {
+            
         }
     }
 }

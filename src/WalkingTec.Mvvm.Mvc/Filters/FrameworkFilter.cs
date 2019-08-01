@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Text.RegularExpressions;
 
 namespace WalkingTec.Mvvm.Mvc.Filters
 {
@@ -37,7 +38,7 @@ namespace WalkingTec.Mvvm.Mvc.Filters
             var ctrlDes = ctrlActDesc.ControllerTypeInfo.GetCustomAttributes(typeof(ActionDescriptionAttribute), false).Cast<ActionDescriptionAttribute>().FirstOrDefault();
             var actDes = ctrlActDesc.MethodInfo.GetCustomAttributes(typeof(ActionDescriptionAttribute), false).Cast<ActionDescriptionAttribute>().FirstOrDefault();
             var postDes = ctrlActDesc.MethodInfo.GetCustomAttributes(typeof(HttpPostAttribute), false).Cast<HttpPostAttribute>().FirstOrDefault();
-
+            var validpostonly = ctrlActDesc.MethodInfo.GetCustomAttributes(typeof(ValidateFormItemOnlyAttribute), false).Cast<ValidateFormItemOnlyAttribute>().FirstOrDefault();
             var crossDomain = ctrlActDesc.MethodInfo.GetCustomAttributes(typeof(CrossDomainAttribute), false).FirstOrDefault() as CrossDomainAttribute;
             if (crossDomain == null)
             {
@@ -173,16 +174,19 @@ namespace WalkingTec.Mvvm.Mvc.Filters
                         template.CopyContext(model);
                         template.DoReInit();
                     }
+                    model.Validate();
                     //SetReinit
                     var invalid = ctrl.ModelState.Where(x => x.Value.ValidationState == Microsoft.AspNetCore.Mvc.ModelBinding.ModelValidationState.Invalid).Select(x => x.Key).ToList();
-                    foreach (var v in invalid)
+                    if ((ctrl as ControllerBase).Request.Method.ToLower() == "put" || validpostonly != null)
                     {
-                        if (model.FC.ContainsKey(v) == false)
+                        foreach (var v in invalid)
                         {
-                            ctrl.ModelState.Remove(v);
+                            if (model.FC.ContainsKey(v) == false)
+                            {
+                                ctrl.ModelState.Remove(v);
+                            }
                         }
                     }
-                    model.Validate();
                     if (ctrl is BaseController)
                     {
                         var reinit = model.GetType().GetTypeInfo().GetCustomAttributes(typeof(ReInitAttribute), false).Cast<ReInitAttribute>().SingleOrDefault();
@@ -200,6 +204,13 @@ namespace WalkingTec.Mvvm.Mvc.Filters
                                 model.DoReInit();
                             }
                         }
+                    }
+
+                    //如果是子表外键验证错误，例如Entity.Majors[0].SchoolId为空这种错误，则忽略。因为框架会在添加修改的时候自动给外键赋值
+                    var toremove = ctrl.ModelState.Select(x => x.Key).Where(x => Regex.IsMatch(x, ".*?\\[.*?\\]\\..*?id", RegexOptions.IgnoreCase));
+                    foreach (var r in toremove)
+                    {
+                        ctrl.ModelState.Remove(r);
                     }
                 }
             }
@@ -299,6 +310,10 @@ namespace WalkingTec.Mvvm.Mvc.Filters
                     log.ActionUrl = context.HttpContext.Request.Path;
                     log.IP = context.HttpContext.GetRemoteIpAddress();
                     log.Remark = context.Exception?.ToString() ?? string.Empty;
+                    if(string.IsNullOrEmpty(log.Remark) == false && log.Remark.Length > 1000)
+                    {
+                        log.Remark = log.Remark.Substring(0, 1000);
+                    }
                     var starttime = context.HttpContext.Items["actionstarttime"] as DateTime?;
                     if (starttime != null)
                     {
