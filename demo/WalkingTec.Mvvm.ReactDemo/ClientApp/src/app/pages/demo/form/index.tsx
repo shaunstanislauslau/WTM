@@ -55,6 +55,11 @@ export default class App extends React.Component<any, any> {
             rules: [],
             formItem: <LenovoSelect dataSource={Request.cache({ url: "/api/_DataPrivilege/GetPrivileges" })} />
         },
+        "Select2": {
+            label: "Select",
+            rules: [],
+            formItem: <LenovoSelect mode="multiple" dataSource={Request.cache({ url: "/api/_DataPrivilege/GetPrivileges" })} />
+        },
     }
     onSubmit() {
         this.props.form.validateFields((err, values) => {
@@ -78,7 +83,8 @@ export default class App extends React.Component<any, any> {
                     <FormItem fieId="DatePicker2" {...props} />
                     <FormItem fieId="WtmRangePicker" {...props} />
                     <FormItem fieId="WtmRangePicker2" {...props} />
-                    <FormItem fieId="Select" {...props} display value={['School']} />
+                    <FormItem fieId="Select" {...props} value={'School'} />
+                    <FormItem fieId="Select2" {...props} value={['School']} />
                     <FormItem fieId="WtmEditor" {...props} layout="row" />
                 </InfoShellLayout>
             </div>

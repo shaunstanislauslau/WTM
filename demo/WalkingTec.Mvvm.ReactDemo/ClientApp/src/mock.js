@@ -151,21 +151,21 @@ function createData() {
     const { selectList, treeSelect } = Mock.mock({
         'selectList|20': [
             {
-                text: '@province',
-                value: function () {
-                    return this.text
+                Text: '@province',
+                Value: function () {
+                    return this.Text
                 },
                 'children|20': [
                     {
-                        text: '@city',
-                        value: function () {
-                            return this.text
+                        Text: '@city',
+                        Value: function () {
+                            return this.Text
                         },
                         'children|20': [
                             {
-                                text: '@county',
-                                value: function () {
-                                    return this.text
+                                Text: '@county',
+                                Value: function () {
+                                    return this.Text
                                 },
                             }
                         ]
