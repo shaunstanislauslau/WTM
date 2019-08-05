@@ -7,7 +7,7 @@
  */
 import { Select, notification, Spin, Tag } from 'antd';
 import { SelectProps } from 'antd/lib/select';
-import { DesError } from 'components/decorators'; //错误
+import { DesError, DesLoadingData, ILoadingDataProps } from 'components/decorators'; //错误
 import lodash from 'lodash';
 import React from 'react';
 import { Observable } from 'rxjs';
@@ -261,5 +261,31 @@ export class WtmSelect extends React.Component<IAppProps, any> {
         })
     }
 }
-
+@DesLoadingData()
+export class LenovoSelect extends React.Component<ILoadingDataProps & SelectProps<any>, any> {
+    static wtmType = "Select";
+    state = {
+        spinning: false,
+        dataSource: [],
+    }
+    render() {
+        const { dataSource, ...props } = this.props;
+        return (
+            <Select
+                placeholder="Please choose"
+                {...props}
+            >
+                {this.renderItem(this.state.dataSource)}
+            </Select>
+        );
+    }
+    renderItem(dataSource) {
+        if (this.props.renderItem) {
+            return this.props.renderItem(dataSource)
+        }
+        return dataSource.map(x => {
+            return <Select.Option key={x.key} value={x.key}>{x.title}</Select.Option>
+        })
+    }
+}
 export default WtmSelect
